@@ -1,0 +1,371 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+
+/* ============================================================
+   MUTUAL LEARN — DESIGN TOKENS
+   Logodaki mor-cyan gradyan ve koyu lacivert palette
+   ============================================================ */
+:root {
+  /* Ana renkler (logo'dan alındı) */
+  --purple:       #9333ea;
+  --purple-light: #a855f7;
+  --cyan:         #06d6a0;
+  --cyan-light:   #34d8ac;
+  --navy:         #1e2d5a;
+  --navy-deep:    #0f1829;
+
+  /* Yüzeyler */
+  --bg:           #080e1f;
+  --surface:      #0f1829;
+  --surface-2:    #162035;
+  --surface-3:    #1e2d4a;
+  --border:       rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.15);
+
+  /* Metin */
+  --text-primary:   #f0f4ff;
+  --text-secondary: #8899bb;
+  --text-muted:     #4a5a78;
+
+  /* Gradyanlar */
+  --grad-brand:   linear-gradient(135deg, var(--purple), var(--cyan));
+  --grad-surface: linear-gradient(180deg, var(--surface-2), var(--surface));
+  --grad-card:    linear-gradient(145deg, rgba(147,51,234,0.08), rgba(6,214,160,0.05));
+
+  /* Gölgeler */
+  --shadow-sm:    0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md:    0 8px 24px rgba(0,0,0,0.5);
+  --shadow-lg:    0 20px 60px rgba(0,0,0,0.6);
+  --shadow-glow-purple: 0 0 30px rgba(147,51,234,0.25);
+  --shadow-glow-cyan:   0 0 30px rgba(6,214,160,0.20);
+
+  /* Boyutlar */
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  18px;
+  --radius-xl:  24px;
+  --radius-full: 9999px;
+
+  /* Yazı tipleri */
+  --font-display: 'Syne', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+
+  /* Geçişler */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast:   150ms;
+  --duration-normal: 250ms;
+  --duration-slow:   400ms;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  /* Subtle noise texture */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.gradient-text {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ============================================================
+   KARTLAR
+   ============================================================ */
+.card {
+  background: var(--grad-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: border-color var(--duration-normal) var(--ease-smooth),
+              box-shadow var(--duration-normal) var(--ease-smooth);
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-glow-purple);
+}
+
+/* ============================================================
+   BUTONLAR
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: all var(--duration-normal) var(--ease-spring);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--grad-brand);
+  color: white;
+  box-shadow: 0 4px 15px rgba(147,51,234,0.35);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(147,51,234,0.50);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.btn-sm { padding: 8px 16px; font-size: 0.82rem; }
+.btn-lg { padding: 16px 32px; font-size: 1rem; }
+
+/* ============================================================
+   FORMLAR
+   ============================================================ */
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.form-input, .form-select, .form-textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  transition: border-color var(--duration-fast),
+              box-shadow var(--duration-fast);
+  outline: none;
+  width: 100%;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(147,51,234,0.15);
+}
+
+.form-input::placeholder { color: var(--text-muted); }
+
+.form-select option { background: var(--surface-2); }
+
+/* ============================================================
+   KREDİ BADGE
+   ============================================================ */
+.credit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, rgba(147,51,234,0.15), rgba(6,214,160,0.10));
+  border: 1px solid rgba(147,51,234,0.3);
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--cyan);
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+/* ============================================================
+   ANİMASYONLAR
+   ============================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(147,51,234,0.2); }
+  50%       { box-shadow: 0 0 30px rgba(147,51,234,0.4); }
+}
+
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-in { animation: fadeIn 0.4s var(--ease-smooth) forwards; }
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+.text-muted    { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.text-primary  { color: var(--text-primary); }
+.text-purple   { color: var(--purple-light); }
+.text-cyan     { color: var(--cyan); }
+
+.bg-surface    { background: var(--surface); }
+.bg-surface-2  { background: var(--surface-2); }
+
+.flex          { display: flex; }
+.flex-col      { flex-direction: column; }
+.items-center  { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2         { gap: 8px; }
+.gap-3         { gap: 12px; }
+.gap-4         { gap: 16px; }
+.gap-6         { gap: 24px; }
+
+.w-full        { width: 100%; }
+.mt-1          { margin-top: 4px; }
+.mt-2          { margin-top: 8px; }
+.mt-4          { margin-top: 16px; }
+.mt-6          { margin-top: 24px; }
+.mb-2          { margin-bottom: 8px; }
+.mb-4          { margin-bottom: 16px; }
+.mb-6          { margin-bottom: 24px; }
+
+/* ============================================================
+   RESPONSIVE — MOBIL UYUMLULUK
+   ============================================================ */
+
+/* Kart grid'leri */
+@media (max-width: 768px) {
+  .container { padding: 0 16px; }
+
+  /* Dashboard grid 1 kolon */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Stat kartları 2x2 */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Modal tam ekran */
+  .modal-content {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    min-height: 100vh !important;
+    border: none !important;
+  }
+
+  /* Buton grup tam genişlik */
+  .btn-group-mobile {
+    flex-direction: column !important;
+  }
+  .btn-group-mobile .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Tablo overflow */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Filtre bar wrap */
+  .filter-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+
+  /* Oturum kartı */
+  .session-card-actions {
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Çok küçük ekranlar */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .card { padding: 16px !important; }
+
+  h1 { font-size: 1.3rem !important; }
+  h2 { font-size: 1.1rem !important; }
+}
+
+/* Touch cihazlar için hover kaldır */
+@media (hover: none) {
+  .btn:hover { transform: none !important; }
+  .card:hover { transform: none !important; box-shadow: none !important; }
+}
+
+/* Safe area (iPhone notch) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-bottom-padding {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Session sayfası sağ panel mobilde gizle */
+@media (max-width: 768px) {
+  .session-info-panel {
+    display: none !important;
+  }
+
+  /* Explore arama kutusu */
+  .explore-hero {
+    padding: 20px 16px 16px !important;
+  }
+
+  /* DateTimePicker tablo */
+  .availability-table {
+    font-size: 0.65rem !important;
+  }
+}

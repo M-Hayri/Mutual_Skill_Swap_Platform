@@ -1,0 +1,442 @@
+// Mutual Learn by Exchange - Veritabanı Şeması
+// MVP (Aşama 1) — Aşama 2 ve 3 için genişlemeye hazır mimari
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUM TANIMLARI
+// ============================================================
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum SkillLevel {
+  BEGINNER     // Başlangıç
+  INTERMEDIATE // Orta
+  ADVANCED     // İleri
+  EXPERT       // Uzman
+}
+
+enum UserSkillRole {
+  TEACHER // Öğreten
+  LEARNER // Öğrenen
+}
+
+enum SessionStatus {
+  PENDING    // Eşleşme bekleniyor
+  MATCHED    // Eşleşme yapıldı, onay bekleniyor
+  CONFIRMED  // Her iki taraf onayladı
+  ACTIVE     // Oturum başladı
+  COMPLETED  // Başarıyla tamamlandı
+  CANCELLED  // İptal edildi
+  DISPUTED   // Uyuşmazlık var
+}
+
+enum EscrowStatus {
+  LOCKED     // Kredi kilitlendi (escrow'da)
+  RELEASED   // Öğretene aktarıldı
+  REFUNDED   // Öğrenene iade edildi
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_TEACHER
+  RESOLVED_LEARNER
+  RESOLVED_SPLIT
+}
+
+// Aşama 2+ için takas döngüsü tipi
+enum SwapCycleType {
+  DIRECT   // 2'li direkt takas (MVP)
+  TRIANGLE // 3'lü döngüsel takas (Aşama 2)
+  MULTI    // Çok taraflı (Aşama 3)
+}
+
+// ============================================================
+// KULLANICI (USER)
+// ============================================================
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  username      String   @unique
+  passwordHash  String
+  displayName   String
+  bio           String?
+  avatarUrl     String?
+  role          UserRole @default(USER)
+  isEmailVerified Boolean @default(false)
+  isActive      Boolean  @default(true)
+
+  // Para birimi: Zaman Kredisi
+  // Başlangıç kredisi: kullanıcıların sisteme katılımını teşvik etmek için
+  zaman_kredisi_bakiyesi Float @default(2.0)
+
+  // Görünmez Güven Skoru: 0.0 - 1.0 arası
+  // Kullanıcılar göremez; eşleştirme algoritması kullanır
+  gorunmez_guven_skoru Float @default(0.5)
+
+  // Güven skoru bileşenleri (algoritma için ayrı tutulur)
+  tamamlama_orani      Float @default(0.0)  // Tamamlanan/toplam oturum
+  iptal_orani          Float @default(0.0)  // İptal edilen/toplam
+  gec_katilim_sayisi   Int   @default(0)    // Geç katıldığı oturum sayısı
+  toplam_ogretim_saati Float @default(0.0)
+  toplam_ogrenme_saati Float @default(0.0)
+
+  // Zaman dilimi (eşleştirme için kritik)
+  timezone String @default("Europe/Istanbul")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLoginAt DateTime?
+
+  // İlişkiler
+  skills            UserSkill[]
+  sessionsAsTeacher Session[]          @relation("TeacherSessions")
+  sessionsAsLearner Session[]          @relation("LearnerSessions")
+  escrows           Escrow[]
+  reviewsGiven      Review[]           @relation("ReviewsGiven")
+  reviewsReceived   Review[]           @relation("ReviewsReceived")
+  trustLogs         TrustScoreLog[]
+  notifications     Notification[]
+  availability      UserAvailability[]
+  disputesRaised    Dispute[]          @relation("DisputesRaised")
+
+  @@map("users")
+}
+
+// ============================================================
+// BECERİ KATEGORİSİ
+// ============================================================
+
+model SkillCategory {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  nameEn      String?
+  icon        String? // emoji veya icon kodu
+  description String?
+  isActive    Boolean @default(true)
+
+  skills Skill[]
+
+  createdAt DateTime @default(now())
+
+  @@map("skill_categories")
+}
+
+// ============================================================
+// BECERİ (SKILL)
+// ============================================================
+
+model Skill {
+  id          String     @id @default(uuid())
+  name        String
+  nameEn      String?
+  description String?
+  categoryId  String
+  category    SkillCategory @relation(fields: [categoryId], references: [id])
+
+  // Aşama 2: Zaman çarpanı (zorluk + talep yoğunluğuna göre)
+  // MVP'de 1.0 sabit; Aşama 2'de dinamik hale gelecek
+  zaman_carpani      Float @default(1.0)
+  talep_yogunlugu    Float @default(0.5) // 0.0 - 1.0
+  ortalama_zorluk    Float @default(0.5) // 0.0 - 1.0
+
+  isActive    Boolean @default(true)
+  isVerified  Boolean @default(false) // Admin onaylı beceri
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userSkills UserSkill[]
+
+  @@unique([name, categoryId])
+  @@map("skills")
+}
+
+// ============================================================
+// KULLANICI-BECERİ İLİŞKİSİ (USER_SKILL)
+// ============================================================
+
+model UserSkill {
+  id       String        @id @default(uuid())
+  userId   String
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillId  String
+  skill    Skill         @relation(fields: [skillId], references: [id])
+
+  // Kullanıcı bu beceriyi öğretiyor mu öğreniyor mu?
+  role     UserSkillRole
+
+  // Seviye
+  level    SkillLevel
+
+  // Öğreten ise
+  maxStudentsPerSession Int?    @default(1)  // MVP: 1, Aşama 2: grup dersleri
+  sessionDurationMinutes Int?  @default(60) // Tercih edilen oturum süresi
+  teachingFormat String?        // "online", "yüz yüze", "her ikisi"
+  description    String?        // "Bu beceriyi nasıl öğretirim" açıklaması
+
+  // Öğrenen ise
+  currentLevel   SkillLevel?    // Şu anki seviyesi
+  targetLevel    SkillLevel?    // Hedef seviyesi
+  learningGoal   String?        // Neden öğrenmek istiyor
+
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, skillId, role])
+  @@map("user_skills")
+}
+
+// ============================================================
+// KULLANICI MÜSAITLIK TAKVİMİ
+// ============================================================
+
+model UserAvailability {
+  id        String @id @default(uuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  dayOfWeek Int    // 0=Pazar, 1=Pazartesi ... 6=Cumartesi
+  startTime String // "09:00"
+  endTime   String // "18:00"
+
+  @@map("user_availability")
+}
+
+// ============================================================
+// OTURUM / EŞLEŞME (SESSION)
+// ============================================================
+
+model Session {
+  id          String        @id @default(uuid())
+  status      SessionStatus @default(PENDING)
+
+  // Taraflar
+  teacherId   String
+  teacher     User          @relation("TeacherSessions", fields: [teacherId], references: [id])
+  learnerId   String
+  learner     User          @relation("LearnerSessions", fields: [learnerId], references: [id])
+
+  // Hangi beceri öğretiliyor
+  skillId     String
+  // NOT: Skill ilişkisi UserSkill üzerinden takip edilir
+
+  // Zaman bilgileri
+  scheduledAt       DateTime  // Planlanan başlangıç
+  scheduledEnd      DateTime  // Planlanan bitiş
+  actualStartAt     DateTime? // Gerçek başlangıç
+  actualEndAt       DateTime? // Gerçek bitiş
+  durationMinutes   Int       @default(60)
+
+  // Aşama 2+ için döngü takibi
+  swapCycleType     SwapCycleType @default(DIRECT)
+  swapCycleId       String?       // Döngü grubu ID'si
+
+  // Kredi hesaplama
+  creditAmount      Float         // Oturum için hesaplanan kredi miktarı
+  zaman_carpani     Float @default(1.0) // O anki çarpan değeri (snapshot)
+
+  // Onay sistemi
+  teacherConfirmed  Boolean @default(false)
+  learnerConfirmed  Boolean @default(false)
+
+  // Tamamlama onayı
+  teacherCompletionConfirmed Boolean @default(false)
+  learnerCompletionConfirmed Boolean @default(false)
+
+  // Sistem metadata
+  matchScore        Float?    // Eşleştirme algoritmasının skoru
+  matchReasons      Json?     // Neden eşleştirildi (debug/şeffaflık)
+
+  notes             String?   // Öğrencinin notu / konular
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // İlişkiler
+  escrow    Escrow?
+  reviews   Review[]
+  dispute   Dispute?
+  logs      SessionLog[]
+  messages  ChatMessage[]
+
+  @@map("sessions")
+}
+
+// ============================================================
+// ESCROW SİSTEMİ (KREDİ KİLİT MEKANİZMASI)
+// ============================================================
+
+model Escrow {
+  id          String       @id @default(uuid())
+  sessionId   String       @unique
+  session     Session      @relation(fields: [sessionId], references: [id])
+  holderId    String       // Kredisi kilitlenen kullanıcı (öğrenen)
+  holder      User         @relation(fields: [holderId], references: [id])
+
+  amount      Float        // Kilitlenen kredi miktarı
+  status      EscrowStatus @default(LOCKED)
+
+  lockedAt    DateTime     @default(now())
+  releasedAt  DateTime?    // Ne zaman serbest bırakıldı
+
+  // Serbest bırakma nedeni (audit trail)
+  releaseReason String?
+
+  @@map("escrows")
+}
+
+// ============================================================
+// ÇOK BOYUTLU DEĞERLENDİRME (REVIEW)
+// ============================================================
+
+model Review {
+  id          String  @id @default(uuid())
+  sessionId   String
+  session     Session @relation(fields: [sessionId], references: [id])
+  reviewerId  String
+  reviewer    User    @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  revieweeId  String
+  reviewee    User    @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+
+  // Davranışsal metrikler (klasik 1-5 yıldız yerine)
+  zamanindaGeldiMi      Boolean?  // Zamanında katıldı mı?
+  iletisimKalitesi      Int?      // 1-5: İletişim kalitesi
+  konuHakimiyeti        Int?      // 1-5: Konuya hakimiyet
+  anlatimNetligi        Int?      // 1-5: Anlatım netliği
+  tekrarEslesirmekIster Boolean?  // Tekrar eşleşmek ister misin?
+  gecikmeDakika         Int?      // Kaç dakika geç geldi (0 ise zamanında)
+
+  comment     String?   // İsteğe bağlı yorum
+  isAnonymous Boolean   @default(false)
+
+  // Hesaplanan genel skor (0.0 - 1.0, güven skoruna katkı verir)
+  computedScore Float?
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, reviewerId])
+  @@map("reviews")
+}
+
+// ============================================================
+// GÜVEN SKORU LOG (TrustScoreLog)
+// ============================================================
+
+model TrustScoreLog {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Değişim
+  eskiSkor    Float
+  yeniSkor    Float
+  delta       Float  // Fark (+ veya -)
+
+  // Neden değişti?
+  reason      String  // "late_cancellation", "positive_review", "no_show" vb.
+  sessionId   String?
+
+  createdAt DateTime @default(now())
+
+  @@map("trust_score_logs")
+}
+
+// ============================================================
+// UYUŞMAZLIK (DISPUTE)
+// ============================================================
+
+model Dispute {
+  id          String        @id @default(uuid())
+  sessionId   String        @unique
+  session     Session       @relation(fields: [sessionId], references: [id])
+  raisedById  String
+  raisedBy    User          @relation("DisputesRaised", fields: [raisedById], references: [id])
+
+  status      DisputeStatus @default(OPEN)
+  reason      String        // Uyuşmazlık nedeni
+  description String?
+
+  // Otomatik hakemlik sonucu
+  autoResolved    Boolean @default(false)
+  autoDecision    String? // Sistem kararı ve gerekçesi (JSON string)
+  confidenceScore Float?  // Sistemin kararına olan güven skoru
+
+  // Manuel inceleme gerekiyorsa
+  reviewedByAdmin Boolean @default(false)
+  adminNotes      String?
+
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("disputes")
+}
+
+// ============================================================
+// OTURUM LOGU (Audit Trail)
+// ============================================================
+
+model SessionLog {
+  id        String  @id @default(uuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  event     String  // "session_started", "user_joined", "user_left", vb.
+  actorId   String? // Kim yaptı
+  metadata  Json?   // Ek veri
+
+  createdAt DateTime @default(now())
+
+  @@map("session_logs")
+}
+
+// ============================================================
+// BİLDİRİM (NOTIFICATION)
+// ============================================================
+
+model Notification {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String  // "match_found", "session_reminder", "credit_received", vb.
+  title     String
+  message   String
+  data      Json?   // İlgili entity'nin ID'si vb.
+
+  isRead    Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// ============================================================
+// CANLI OTURUM SOHBET MESAJLARI
+// ============================================================
+
+model ChatMessage {
+  id        String  @id @default(uuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  senderId  String? // null = sistem mesaji
+  text      String
+  type      String  @default("text") // "text" | "system"
+  createdAt DateTime @default(now())
+
+  @@map("chat_messages")
+}
